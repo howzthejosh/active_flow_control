@@ -1,5 +1,5 @@
 from scipy.optimize import minimize
-import flow_solver as fs
+import flow_solver_act as fs
 
 # Parameters to be optimized (Amplitude and Frequency)
 init_params = [1.25, 0.5, 0.5]
