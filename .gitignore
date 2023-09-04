@@ -1,4 +1,5 @@
 *.msh
 *.xdmf
 *.h5
+*.csv
 output/
