@@ -33,12 +33,12 @@ def flow_solver(A, ki, Re, sim_time, num_steps, ave_start_iter):
 
     # Import mesh
     mesh = Mesh(mesh_comm)
-    with XDMFFile(mesh_comm,"mesh/mesh.xdmf") as infile:
+    with XDMFFile(mesh_comm,"mesh.xdmf") as infile:
         infile.read(mesh)
 
     mvc = MeshValueCollection("size_t", mesh, 1) 
 
-    with XDMFFile(mesh_comm,"mesh/facet_mesh.xdmf") as infile:
+    with XDMFFile(mesh_comm,"facet_mesh.xdmf") as infile:
         infile.read(mvc, "line_markers")
 
     boundaries = cpp.mesh.MeshFunctionSizet(mesh, mvc)
