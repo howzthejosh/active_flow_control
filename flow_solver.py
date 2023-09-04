@@ -7,18 +7,47 @@ the Incremental Pressure Correction Scheme (IPCS).
                                  div(u) = 0
 """
 
+from __future__ import print_function
 import tqdm.autonotebook
 import csv 
 import os
 import argparse
-# import pandas as pd
+import pandas as pd
 
 from dolfin import *
 import numpy as np
 from mpi4py import MPI
 
 
-def flow_solver(A, ki, Re, sim_time, num_steps, ave_start_iter):
+
+def cost_fct(opt_params, settings):
+
+
+    A = opt_params[0]
+    ki = opt_params[1]
+    phi = opt_params[2]
+
+    Re = settings['Re']
+    sim_time = settings['sim_time']
+    num_steps = settings['num_steps']
+    ave_start_iter = settings['ave_start_iter']
+
+    CD_mean = flow_solver(A, ki, phi, Re, sim_time, num_steps, ave_start_iter)
+
+    filename = "opt"+ "_A" + str(A) + "_ki" + str(ki) + "_phi" + str(phi) + ".csv"
+    headerList = ['A','ki','phi','CD_mean']
+    
+    with open(filename,'w') as file:
+        dw = csv.DictWriter(file,delimiter=',',fieldnames=headerList)
+        dw.writeheader()
+        dw.writerow({'A':A,'ki':ki,'phi':phi,'CD_mean':CD_mean})
+
+
+    return CD_mean
+    
+    
+
+def flow_solver(A, ki, phi, Re, sim_time, num_steps, ave_start_iter):
 
     mesh_comm = MPI.COMM_WORLD
     rank = mesh_comm.rank
@@ -76,10 +105,12 @@ def flow_solver(A, ki, Re, sim_time, num_steps, ave_start_iter):
     half_width =  radius*np.sin(alpha)
     A = A
     ki = ki
+    phi=phi
 
-    my_jet_bc = Expression(('0', '(1.0 - pow(x[0]/half_width, 2.0))*(A*cos(2*pi*ki*t))'), 
+    my_jet_bc = Expression(('0', '(1.0 - pow(x[0]/half_width, 2.0))*(A*cos(2*pi*ki*t + phi))'), 
                             A=A,
                             ki=ki,
+                            phi=phi,
                             half_width=half_width, 
                             t=t,
                             degree=2)
@@ -199,10 +230,6 @@ def flow_solver(A, ki, Re, sim_time, num_steps, ave_start_iter):
 
         # Initializing jet boundary condition 
         my_jet_bc.t = t
-        # if n>10000:
-        #     my_jet_bc.t = t
-        # else:
-        #     my_jet_bc.t = 0.5
 
         # Step 1: Tentative velocity step
         b1 = assemble(L1)
@@ -234,7 +261,7 @@ def flow_solver(A, ki, Re, sim_time, num_steps, ave_start_iter):
         F_L = assemble(-force[1]*ds_circle)
         C_D = 2/(U_mean**2*L)*F_D
         C_L = 2/(U_mean**2*L)*F_L
-        
+        # print(F_D,F_L,C_D,C_L,rank)
         
         
         arr[n].append(t)
@@ -277,6 +304,7 @@ if __name__ =="__main__":
     parser = argparse.ArgumentParser(description="Flow Across Cylinder with Actuation")
     parser.add_argument("--A", help="Signal amplitude value", type=float, default=1.25)
     parser.add_argument("--ki", help="Signal frequency value", type=float, default=1.0)
+    parser.add_argument("--phi", help="Signal phase shift value", type=float, default=0.5)
     parser.add_argument("--Re", help="Reynolds number", type=int, default=100)
     parser.add_argument("--sim_time", help="Simulation time", type=float, default=1.0)
     parser.add_argument("--num_steps", help="Number of time steps", type=int, default=500)
@@ -287,6 +315,7 @@ if __name__ =="__main__":
 
     A = args.A
     ki = args.ki
+    phi = args.phi
     Re = args.Re 
     sim_time = args.sim_time
     num_steps = args.num_steps
@@ -295,6 +324,7 @@ if __name__ =="__main__":
 
     a = flow_solver(A=A,
                 ki=ki,
+                phi=phi,
                 Re=Re,
                 sim_time=sim_time,
                 num_steps=num_steps,
