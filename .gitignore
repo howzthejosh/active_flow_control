@@ -1,4 +1,4 @@
 *.msh
 *.xdmf
 *.h5
-navier_stokes_cylinder/
+output/
